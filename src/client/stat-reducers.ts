@@ -19,8 +19,16 @@ export const replaceLoaderInIdentifier = (identifier?: string) => {
  * Normalizes an identifier so that it carries over time: removing the
  *  "+ X modules" from the end of concatenated module identifiers.
  */
-export const normalizeName = (identifier?: string) =>
-  identifier ? identifier.replace(/ \+ [0-9]+ modules$/, '') : '';
+export const normalizeName = (identifier?: string) => {
+  if (!identifier) {
+    return '';
+  }
+
+  const normalizedName = identifier.replace(/ \+ [0-9]+ modules$/, '');
+  const firstNodeModulesIndex = normalizedName.indexOf('node_modules');
+
+  return firstNodeModulesIndex === -1 ? normalizedName : normalizedName.slice(firstNodeModulesIndex);
+}
 
 /**
  * Higher-order function that caches input to the wrapped function by argument.
@@ -139,7 +147,7 @@ export const getConcatenationParent = (m: Stats.FnModules): Stats.FnModules =>
   concatParents.get(m) || m;
 
 /**
- * Get webpack modules, either globally ro in a single chunk.
+ * Get webpack modules, either globally or in a single chunk.
  */
 export const getWebpackModules = cacheByArg((stats: Stats.ToJsonOutput, filterToChunk?: number) => {
   const modules: Stats.FnModules[] = [];
@@ -286,7 +294,7 @@ export const compareAllModules = (
 
   const output: { [name: string]: IWebpackModuleComparisonOutput } = {};
   for (const m of oldModules) {
-    const normalized = normalizeName(m.name);
+    const normalized = normalizeName(replaceLoaderInIdentifier(m.name));
     output[normalized] = {
       name: normalized,
       type: identifyModuleType(m.identifier),
@@ -298,7 +306,7 @@ export const compareAllModules = (
   }
 
   for (const m of newModules) {
-    const normalized = normalizeName(m.name);
+    const normalized = normalizeName(replaceLoaderInIdentifier(m.name));
     if (output[normalized]) {
       output[normalized].new = m;
       output[normalized].toSize = m.size;
